@@ -52,3 +52,58 @@ export interface ExerciseConfig {
   targetAngles: Partial<JointAngles>;
   tolerances: Partial<JointAngles>;
 }
+
+// Recording and Analysis Types
+export type RecordingStatus = "idle" | "recording" | "analyzing" | "complete";
+
+export interface RepData {
+  repNumber: number;
+  timestamp: number;
+  formScore: number;
+  issues: FormIssue[];
+  angles: JointAngles;
+}
+
+export interface FormIssue {
+  bodyPart: keyof JointAngles;
+  severity: "warning" | "error";
+  actualAngle: number;
+  targetAngle: number;
+  deviation: number;
+}
+
+export interface SetRecording {
+  id: string;
+  exerciseType: ExerciseType;
+  startTime: number;
+  endTime?: number;
+  reps: RepData[];
+  status: RecordingStatus;
+}
+
+export interface SetAnalysis {
+  totalReps: number;
+  duration: number;
+  averageFormScore: number;
+  bestRep: number;
+  worstRep: number;
+  commonIssues: IssueAnalysis[];
+  recommendations: Recommendation[];
+  overallGrade: "A" | "B" | "C" | "D" | "F";
+}
+
+export interface IssueAnalysis {
+  bodyPart: keyof JointAngles;
+  occurrences: number;
+  percentageOfReps: number;
+  averageDeviation: number;
+  description: string;
+}
+
+export interface Recommendation {
+  id: string;
+  priority: "high" | "medium" | "low";
+  title: string;
+  description: string;
+  tip: string;
+}

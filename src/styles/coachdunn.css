@@ -778,6 +778,509 @@ body {
   background: var(--color-primary);
 }
 
+/* Start hint */
+.start-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: var(--space-md);
+}
+
+/* ========================================
+   RECORDING SCREEN STYLES
+   ======================================== */
+
+.recording-screen {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.video-container.recording-mode {
+  aspect-ratio: 16/9;
+  max-height: 70vh;
+}
+
+/* Recording Overlay */
+.recording-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.recording-overlay > * {
+  pointer-events: auto;
+}
+
+.recording-indicator {
+  position: absolute;
+  top: var(--space-lg);
+  left: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-error);
+}
+
+.rec-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--color-error);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--color-error);
+}
+
+.rec-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-error);
+  letter-spacing: 0.1em;
+}
+
+.rec-time {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  margin-left: var(--space-sm);
+}
+
+.exercise-badge-minimal {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-primary);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  color: var(--color-primary);
+}
+
+/* Large rep counter during recording */
+.rep-counter-large {
+  text-align: center;
+}
+
+.rep-number-large {
+  display: block;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 8rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  text-shadow: 
+    0 0 40px rgba(0, 240, 255, 0.5),
+    0 0 80px rgba(0, 240, 255, 0.3);
+  line-height: 1;
+}
+
+.rep-label-large {
+  display: block;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  margin-top: var(--space-sm);
+}
+
+.stop-recording-button {
+  position: absolute;
+  bottom: var(--space-2xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-xl);
+  background: linear-gradient(135deg, var(--color-error), #cc3355);
+  border: none;
+  border-radius: var(--radius-full);
+  color: white;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(255, 68, 102, 0.4);
+  transition: all 0.3s ease;
+}
+
+.stop-recording-button:hover {
+  box-shadow: 0 0 30px rgba(255, 68, 102, 0.6);
+}
+
+.recording-hint {
+  position: absolute;
+  bottom: var(--space-md);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* ========================================
+   ANALYSIS VIEW STYLES
+   ======================================== */
+
+.analysis-view {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: var(--space-lg);
+}
+
+.analysis-header {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+.analysis-exercise {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+}
+
+.exercise-icon-large {
+  font-size: 3rem;
+}
+
+.analysis-exercise h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+.analysis-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: var(--space-xs);
+}
+
+/* Grade Card */
+.grade-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xl);
+  padding: var(--space-xl);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.grade-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+}
+
+.grade-letter {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 4rem;
+  font-weight: 900;
+}
+
+.grade-details {
+  text-align: left;
+}
+
+.grade-score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.grade-score .score-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  position: static;
+  transform: none;
+}
+
+.grade-score .score-label {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.grade-message {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  max-width: 250px;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-elevated);
+}
+
+.stat-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-primary);
+}
+
+.stat-icon.success {
+  color: var(--color-success);
+}
+
+.stat-icon.warning {
+  color: var(--color-warning);
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Recommendations Section */
+.recommendations-section {
+  margin-bottom: var(--space-xl);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.recommendation-card {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-elevated);
+}
+
+.rec-priority {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: white;
+}
+
+.rec-content {
+  flex: 1;
+}
+
+.rec-content h4 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  margin-bottom: var(--space-xs);
+}
+
+.rec-description {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-sm);
+  line-height: 1.5;
+}
+
+.rec-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(0, 255, 136, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--color-success);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.rec-tip svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Great Job Card */
+.great-job-card {
+  text-align: center;
+  padding: var(--space-2xl);
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 240, 255, 0.1));
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.great-job-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-success);
+  margin-bottom: var(--space-md);
+}
+
+.great-job-card h3 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  color: var(--color-success);
+  margin-bottom: var(--space-sm);
+}
+
+.great-job-card p {
+  color: var(--text-secondary);
+}
+
+/* Issues Section */
+.issues-section {
+  margin-bottom: var(--space-xl);
+}
+
+.issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.issue-bar {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+
+.issue-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+  font-size: 0.85rem;
+}
+
+.issue-label span:first-child {
+  color: var(--text-secondary);
+}
+
+.issue-percent {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--text-primary);
+}
+
+.issue-progress {
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.issue-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.5s ease;
+}
+
+/* Action Buttons */
+.analysis-actions {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.action-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.action-button.primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  color: var(--bg-deep);
+  box-shadow: var(--glow-primary);
+}
+
+.action-button.secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--bg-elevated);
+}
+
+.action-button.secondary:hover {
+  border-color: var(--color-primary);
+}
+
+.back-link {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.back-link:hover {
+  color: var(--color-primary);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .logo-text {
@@ -804,6 +1307,35 @@ body {
   
   .score-number {
     font-size: 1.4rem;
+  }
+
+  .rep-number-large {
+    font-size: 5rem;
+  }
+
+  .rep-label-large {
+    font-size: 1rem;
+  }
+
+  .grade-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .grade-details {
+    text-align: center;
+  }
+
+  .grade-message {
+    max-width: none;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-actions {
+    flex-direction: column;
   }
 }
 

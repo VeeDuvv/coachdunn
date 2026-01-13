@@ -1,31 +1,52 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, Zap, Camera as CameraIcon } from 'lucide-react';
-import { Camera } from './Camera';
-import type { CameraHandle } from './Camera';
-import { SkeletonOverlay } from './SkeletonOverlay';
-import { FeedbackPanel } from './FeedbackPanel';
-import { ExerciseSelector } from './ExerciseSelector';
-import { usePoseDetection } from '../hooks/usePoseDetection';
-import type { ExerciseType, ExerciseState } from '../types/pose';
-import { extractJointAngles, analyzeForm, detectPhase } from '../utils/formAnalysis';
+import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Zap, Circle } from "lucide-react";
+import { Camera } from "./Camera";
+import type { CameraHandle } from "./Camera";
+import { SkeletonOverlay } from "./SkeletonOverlay";
+import { RecordingOverlay } from "./RecordingOverlay";
+import { SetAnalysisView } from "./SetAnalysisView";
+import { ExerciseSelector } from "./ExerciseSelector";
+import { usePoseDetection } from "../hooks/usePoseDetection";
+import type {
+  ExerciseType,
+  SetRecording,
+  SetAnalysis as SetAnalysisType,
+  RepData,
+  FormIssue,
+  JointAngles,
+} from "../types/pose";
+import {
+  extractJointAngles,
+  analyzeForm,
+  detectPhase,
+  EXERCISE_CONFIGS,
+} from "../utils/formAnalysis";
+import { analyzeSet } from "../utils/setAnalysis";
+
+type AppScreen = "welcome" | "recording" | "analysis";
 
 export function CoachDunn() {
   const cameraRef = useRef<CameraHandle>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [isActive, setIsActive] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
-  const [selectedExercise, setSelectedExercise] = useState<ExerciseType>('squat');
-  const [videoDimensions, setVideoDimensions] = useState({ width: 640, height: 480 });
-  const [exerciseState, setExerciseState] = useState<ExerciseState>({
-    type: 'squat',
-    repCount: 0,
-    phase: 'idle',
-    formScore: 0,
-    feedback: [],
-  });
 
-  const previousPhaseRef = useRef<'up' | 'down' | 'hold' | 'idle'>('idle');
+  // Screen state
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>("welcome");
+  const [selectedExercise, setSelectedExercise] = useState<ExerciseType>("squat");
+
+  // Camera state
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [videoDimensions, setVideoDimensions] = useState({ width: 640, height: 480 });
+
+  // Recording state
+  const [recording, setRecording] = useState<SetRecording | null>(null);
+  const [analysis, setAnalysis] = useState<SetAnalysisType | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+
+  // Rep tracking (internal, not shown during recording)
+  const [repCount, setRepCount] = useState(0);
+  const previousPhaseRef = useRef<"up" | "down" | "hold" | "idle">("idle");
+  const currentRepDataRef = useRef<Partial<RepData>>({});
 
   // Get video reference when camera is ready
   const handleStreamReady = useCallback(() => {
@@ -40,80 +61,163 @@ export function CoachDunn() {
     }
   }, []);
 
-  // Use pose detection hook
+  // Pose detection
   const { pose, isLoading, error } = usePoseDetection({
     videoRef: videoRef as React.RefObject<HTMLVideoElement>,
-    isRunning: isRunning && isActive,
+    isRunning: currentScreen === "recording" && isCameraActive,
   });
 
-  // Process pose data
+  // Recording timer
   useEffect(() => {
-    if (!pose || !isRunning) return;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    if (currentScreen === "recording" && recording) {
+      interval = setInterval(() => {
+        setRecordingDuration((d) => d + 1);
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [currentScreen, recording]);
+
+  // Process pose data during recording
+  useEffect(() => {
+    if (!pose || currentScreen !== "recording" || !recording) return;
 
     const angles = extractJointAngles(pose);
     if (!angles) return;
 
-    // Analyze form
+    // Get form analysis (but don't display it - just track it)
     const { feedback, formScore } = analyzeForm(angles, selectedExercise);
-    
-    // Detect phase and count reps
+
+    // Detect phase for rep counting
     const currentPhase = detectPhase(angles, selectedExercise, previousPhaseRef.current);
-    
-    let newRepCount = exerciseState.repCount;
-    
-    // Count rep when transitioning from down to up
-    if (previousPhaseRef.current === 'down' && currentPhase === 'up') {
-      newRepCount += 1;
+
+    // Track form issues for current rep
+    const issues: FormIssue[] = feedback
+      .filter((f) => f.severity !== "good" && f.bodyPart)
+      .map((f) => {
+        const bodyPart = f.bodyPart as keyof JointAngles;
+        const config = EXERCISE_CONFIGS[selectedExercise];
+        const targetAngle = config.targetAngles[bodyPart] || 0;
+        return {
+          bodyPart,
+          severity: f.severity as "warning" | "error",
+          actualAngle: angles[bodyPart],
+          targetAngle,
+          deviation: Math.abs(angles[bodyPart] - targetAngle),
+        };
+      });
+
+    // Update current rep tracking
+    if (!currentRepDataRef.current.formScore || formScore < currentRepDataRef.current.formScore) {
+      // Track worst form score during the rep (most representative of issues)
+      currentRepDataRef.current = {
+        formScore,
+        issues,
+        angles: { ...angles },
+      };
     }
-    
+
+    // Count rep when transitioning from down to up
+    if (previousPhaseRef.current === "down" && currentPhase === "up") {
+      const newRepCount = repCount + 1;
+      setRepCount(newRepCount);
+
+      // Save completed rep data
+      const repData: RepData = {
+        repNumber: newRepCount,
+        timestamp: Date.now(),
+        formScore: currentRepDataRef.current.formScore || formScore,
+        issues: currentRepDataRef.current.issues || issues,
+        angles: currentRepDataRef.current.angles || angles,
+      };
+
+      setRecording((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          reps: [...prev.reps, repData],
+        };
+      });
+
+      // Reset for next rep
+      currentRepDataRef.current = {};
+    }
+
     previousPhaseRef.current = currentPhase;
+  }, [pose, currentScreen, recording, selectedExercise, repCount]);
 
-    setExerciseState((prev) => ({
-      ...prev,
-      type: selectedExercise,
-      phase: currentPhase,
-      formScore,
-      feedback,
-      repCount: newRepCount,
-    }));
-  }, [pose, isRunning, selectedExercise]);
+  // Start workout
+  const handleStartWorkout = () => {
+    setIsCameraActive(true);
+    setCurrentScreen("recording");
+    setRepCount(0);
+    setRecordingDuration(0);
+    previousPhaseRef.current = "idle";
+    currentRepDataRef.current = {};
 
-  // Reset when exercise changes
-  useEffect(() => {
-    setExerciseState((prev) => ({
-      ...prev,
-      type: selectedExercise,
-      repCount: 0,
-      phase: 'idle',
-      formScore: 0,
-      feedback: [],
-    }));
-    previousPhaseRef.current = 'idle';
-  }, [selectedExercise]);
-
-  const handleStart = () => {
-    setIsActive(true);
+    // Initialize new recording
+    setRecording({
+      id: `set-${Date.now()}`,
+      exerciseType: selectedExercise,
+      startTime: Date.now(),
+      reps: [],
+      status: "recording",
+    });
   };
 
-  const handleToggleRunning = () => {
-    setIsRunning(!isRunning);
+  // Stop recording and analyze
+  const handleStopRecording = () => {
+    if (!recording) return;
+
+    const finalRecording: SetRecording = {
+      ...recording,
+      endTime: Date.now(),
+      status: "complete",
+    };
+
+    setRecording(finalRecording);
+
+    // Analyze the set
+    const analysisResult = analyzeSet(finalRecording);
+    setAnalysis(analysisResult);
+
+    setCurrentScreen("analysis");
+    setIsCameraActive(false);
   };
 
-  const handleReset = () => {
-    setExerciseState((prev) => ({
-      ...prev,
-      repCount: 0,
-      phase: 'idle',
-      formScore: 0,
-      feedback: [],
-    }));
-    previousPhaseRef.current = 'idle';
+  // Start new set (same exercise)
+  const handleNewSet = () => {
+    setRepCount(0);
+    setRecordingDuration(0);
+    setAnalysis(null);
+    previousPhaseRef.current = "idle";
+    currentRepDataRef.current = {};
+
+    setRecording({
+      id: `set-${Date.now()}`,
+      exerciseType: selectedExercise,
+      startTime: Date.now(),
+      reps: [],
+      status: "recording",
+    });
+
+    setIsCameraActive(true);
+    setCurrentScreen("recording");
   };
 
-  const handleStop = () => {
-    setIsActive(false);
-    setIsRunning(false);
-    handleReset();
+  // Back to menu
+  const handleBackToMenu = () => {
+    setIsCameraActive(false);
+    setCurrentScreen("welcome");
+    setRecording(null);
+    setAnalysis(null);
+    setRepCount(0);
+    setRecordingDuration(0);
+    previousPhaseRef.current = "idle";
   };
 
   return (
@@ -121,10 +225,10 @@ export function CoachDunn() {
       {/* Background effects */}
       <div className="bg-gradient" />
       <div className="bg-grid" />
-      
+
       {/* Header */}
       <header className="header">
-        <motion.div 
+        <motion.div
           className="logo"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -137,8 +241,8 @@ export function CoachDunn() {
 
       <main className="main-content">
         <AnimatePresence mode="wait">
-          {!isActive ? (
-            /* Welcome Screen */
+          {/* Welcome Screen */}
+          {currentScreen === "welcome" && (
             <motion.div
               key="welcome"
               className="welcome-screen"
@@ -146,16 +250,10 @@ export function CoachDunn() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <motion.div 
+              <motion.div
                 className="hero-animation"
-                animate={{ 
-                  rotateY: [0, 360],
-                }}
-                transition={{ 
-                  duration: 20, 
-                  repeat: Infinity, 
-                  ease: 'linear' 
-                }}
+                animate={{ rotateY: [0, 360] }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               >
                 <div className="hero-figure">
                   <div className="figure-head" />
@@ -166,12 +264,12 @@ export function CoachDunn() {
                   <div className="figure-leg right" />
                 </div>
               </motion.div>
-              
+
               <h1 className="welcome-title">
-                Perfect Your Form with <span className="highlight">AI</span>
+                Record. Analyze. <span className="highlight">Improve.</span>
               </h1>
               <p className="welcome-description">
-                Real-time pose detection and form analysis to help you exercise safely and effectively.
+                Record your exercise set, get detailed form analysis, and receive personalized recommendations to improve your technique.
               </p>
 
               <ExerciseSelector
@@ -181,124 +279,85 @@ export function CoachDunn() {
 
               <motion.button
                 className="start-button"
-                onClick={handleStart}
+                onClick={handleStartWorkout}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <CameraIcon size={24} />
-                <span>Start Workout</span>
+                <Circle size={24} fill="currentColor" />
+                <span>Start Recording</span>
               </motion.button>
+
+              <p className="start-hint">
+                We'll track your reps and analyze your form after you finish
+              </p>
             </motion.div>
-          ) : (
-            /* Workout Screen */
+          )}
+
+          {/* Recording Screen */}
+          {currentScreen === "recording" && (
             <motion.div
-              key="workout"
-              className="workout-screen"
+              key="recording"
+              className="recording-screen"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="workout-layout">
-                {/* Video Container */}
-                <div className="video-container">
-                  <Camera
-                    ref={cameraRef}
-                    isActive={isActive}
-                    onStreamReady={handleStreamReady}
+              <div className="video-container recording-mode">
+                <Camera
+                  ref={cameraRef}
+                  isActive={isCameraActive}
+                  onStreamReady={handleStreamReady}
+                />
+
+                {/* Skeleton overlay - subtle, just for visual feedback */}
+                {videoRef.current && pose && (
+                  <SkeletonOverlay
+                    pose={pose}
+                    videoWidth={videoDimensions.width}
+                    videoHeight={videoDimensions.height}
+                    feedback={[]} // No feedback colors during recording
                   />
-                  
-                  {videoRef.current && (
-                    <SkeletonOverlay
-                      pose={pose}
-                      videoWidth={videoDimensions.width}
-                      videoHeight={videoDimensions.height}
-                      feedback={exerciseState.feedback}
-                    />
-                  )}
+                )}
 
-                  {/* Loading Overlay */}
-                  {isLoading && (
-                    <div className="loading-overlay">
-                      <div className="loading-spinner large" />
-                      <p>Loading AI Model...</p>
-                    </div>
-                  )}
-
-                  {/* Error Overlay */}
-                  {error && (
-                    <div className="error-overlay">
-                      <p>{error}</p>
-                    </div>
-                  )}
-
-                  {/* Exercise Badge */}
-                  <div className="exercise-badge">
-                    <span className="badge-icon">
-                      {selectedExercise === 'squat' && '🏋️'}
-                      {selectedExercise === 'pushup' && '💪'}
-                      {selectedExercise === 'lunge' && '🦵'}
-                      {selectedExercise === 'plank' && '🧘'}
-                      {selectedExercise === 'jumpingJack' && '⭐'}
-                    </span>
-                    <span className="badge-text">
-                      {selectedExercise.charAt(0).toUpperCase() + selectedExercise.slice(1)}
-                    </span>
+                {/* Loading Overlay */}
+                {isLoading && (
+                  <div className="loading-overlay">
+                    <div className="loading-spinner large" />
+                    <p>Loading AI Model...</p>
                   </div>
-                </div>
+                )}
 
-                {/* Sidebar */}
-                <div className="sidebar">
-                  <FeedbackPanel
-                    exerciseState={exerciseState}
-                    isDetecting={isRunning && !!pose}
+                {/* Recording UI Overlay */}
+                {!isLoading && !error && (
+                  <RecordingOverlay
+                    exerciseType={selectedExercise}
+                    repCount={repCount}
+                    isRecording={true}
+                    duration={recordingDuration}
+                    onStop={handleStopRecording}
                   />
+                )}
 
-                  {/* Controls */}
-                  <div className="controls">
-                    <motion.button
-                      className={`control-button ${isRunning ? 'pause' : 'play'}`}
-                      onClick={handleToggleRunning}
-                      disabled={isLoading}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      {isRunning ? <Pause size={28} /> : <Play size={28} />}
-                    </motion.button>
-                    
-                    <motion.button
-                      className="control-button reset"
-                      onClick={handleReset}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <RotateCcw size={24} />
-                    </motion.button>
+                {/* Error Overlay */}
+                {error && (
+                  <div className="error-overlay">
+                    <p>{error}</p>
+                    <button onClick={handleBackToMenu}>Back to Menu</button>
                   </div>
-
-                  {/* Exercise Selector (compact) */}
-                  <div className="exercise-selector-compact">
-                    {(['squat', 'pushup', 'lunge', 'plank', 'jumpingJack'] as ExerciseType[]).map((type) => (
-                      <button
-                        key={type}
-                        className={`exercise-mini ${selectedExercise === type ? 'active' : ''}`}
-                        onClick={() => setSelectedExercise(type)}
-                      >
-                        {type === 'squat' && '🏋️'}
-                        {type === 'pushup' && '💪'}
-                        {type === 'lunge' && '🦵'}
-                        {type === 'plank' && '🧘'}
-                        {type === 'jumpingJack' && '⭐'}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Back button */}
-                  <button className="back-button" onClick={handleStop}>
-                    ← Back to Menu
-                  </button>
-                </div>
+                )}
               </div>
             </motion.div>
+          )}
+
+          {/* Analysis Screen */}
+          {currentScreen === "analysis" && recording && analysis && (
+            <SetAnalysisView
+              key="analysis"
+              recording={recording}
+              analysis={analysis}
+              onNewSet={handleNewSet}
+              onBackToMenu={handleBackToMenu}
+            />
           )}
         </AnimatePresence>
       </main>
@@ -310,4 +369,3 @@ export function CoachDunn() {
     </div>
   );
 }
-
